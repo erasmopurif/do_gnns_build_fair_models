@@ -9,11 +9,9 @@ from layers import *
 from layers import RHGNLayer
 
 
-
-
-class tb_RHGN(nn.Module):
+class ali_RHGN(nn.Module):
     def __init__(self, G, node_dict, edge_dict, n_inp, n_hid, n_out, n_layers, n_heads,cid1_feature,cid2_feature,cid3_feature,use_norm = True,):
-        super(tb_RHGN, self).__init__()
+        super(ali_RHGN, self).__init__()
         self.node_dict = node_dict
         self.edge_dict = edge_dict
         self.gcs = nn.ModuleList()
@@ -206,7 +204,4 @@ class jd_RHGN(nn.Module):
         # h=F.log_softmax(h, dim=1)
 
         return h, labels
-
-
-
 

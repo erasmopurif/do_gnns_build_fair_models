@@ -6,7 +6,6 @@ import torch
 import numpy as np
 from model import *
 import argparse
-# from sklearn.metrics import f1_score
 from sklearn import metrics
 
 import time
@@ -14,7 +13,7 @@ import time
 from fairness import Fairness
 import neptune.new as neptune
 
-parser = argparse.ArgumentParser(description='for Taobao Dataset')
+parser = argparse.ArgumentParser(description='for Alibaba Dataset')
 
 parser.add_argument('--n_epoch', type=int, default=50)
 parser.add_argument('--batch_size', type=int, default=512)
@@ -420,7 +419,7 @@ if args.model=='RHGN':
     cid3_feature = torch.load('{}/cid3_feature.npy'.format(args.data_dir))
 
 
-    model = tb_RHGN(G,
+    model = ali_RHGN(G,
                 node_dict, edge_dict,
                 n_inp=args.n_inp,
                 n_hid=args.n_hid,
@@ -439,8 +438,7 @@ if args.model=='RHGN':
     print('Training RHGN with #param: %d' % (get_n_params(model)))
     targets, predictions = Batch_train(model)
 
-    # print(G.nodes["user"].data["gender"])
-
+    ### Compute fairness ###
     fair_obj = Fairness(G, test_idx, targets, predictions, args.sens_attr, neptune_run)
     fair_obj.statistical_parity()
     fair_obj.equal_opportunity()
@@ -448,18 +446,3 @@ if args.model=='RHGN':
     fair_obj.treatment_equality()
 
     neptune_run.stop()
-
-
-if args.model=='RGCN':
-    model = HeteroGCN(G,
-                       in_size=args.n_inp,
-                       hidden_size=args.n_hid,
-                       out_size=labels.max().item()+1).to(device)
-    optimizer = torch.optim.AdamW(model.parameters())
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, epochs=args.n_epoch,
-                                                    steps_per_epoch=int(train_idx.shape[0]/args.batch_size)+1,max_lr = args.max_lr)
-    print('Training RGCN with #param: %d' % (get_n_params(model)))
-    Batch_train(model)
-
-
-
