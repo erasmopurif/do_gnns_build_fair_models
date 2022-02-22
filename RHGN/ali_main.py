@@ -52,7 +52,7 @@ neptune_run["label"] = args.label
 neptune_run["num_epochs"] = args.n_epoch
 neptune_run["n_hid"] = args.n_hid
 neptune_run["lr"] = args.max_lr
-neptune_run["clip"] = args.clip
+# neptune_run["clip"] = args.clip
 
 
 def get_n_params(model):
