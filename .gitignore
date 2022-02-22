@@ -1,3 +1,11 @@
+##### SPECIFIC PROJECT FILES TO IGNORE #####
+*.csv
+*.npy
+*.pkl
+attweight/
+
+##### PYTHON STANDARD FILES TO IGNORE #####
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
