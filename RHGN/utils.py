@@ -13,14 +13,14 @@ def get_num_neighbor(G,etype):
 
 def neighbormap(df,dic,user_dic,new_item_dic,col_user='user_id',col_item='item_id'):
     t=time.time()
-    print('开始了')
+    print('Start time')
     for i in range(len(df)):
         user=df.at[i,col_user]
         item=df.at[i,col_item]
         if item in new_item_dic:
             dic[user_dic[user]].append(new_item_dic[item])
 
-    print('结束时间',time.time()-t)
+    print('End time',time.time()-t)
     return dic
 
 def split_char(str):
@@ -29,11 +29,11 @@ def split_char(str):
     buffer = ''
     try:
         for s in str:
-            if s in english or s in english.upper(): #英文或数字
+            if s in english or s in english.upper(): # English or numeric
                 buffer += s
-            elif s in ' （）*()【】/-.':         #如果是空格等特殊符号就跳过
+            elif s in ' （）*()【】/-.': # If it is a special symbol such as a space, skip it
                 continue
-            else: #中文
+            else: # Chinese
                 if buffer:
                     output.append(buffer)
                 buffer = ''
@@ -61,10 +61,10 @@ def filter_sample(threshold,dic):
 def combination(df,users,col_user='user_id',col_item='item_id'):
 
 
-    df = df[df[col_user].isin(users)]           #筛选，用户必须是满足条件的用户
+    df = df[df[col_user].isin(users)]   # Filtering, the user must be a user who meets the conditions
     df.reset_index(drop=True, inplace=True)
     df_item=df[col_item].value_counts()
-    items = df_item[df_item >= 10].to_dict().keys()  #筛选，item的被点击用户数要大于某个值
+    items = df_item[df_item >= 10].to_dict().keys()  # Filtered, the number of users clicked on the item should be greater than a certain value
     df = df[df[col_item].isin(items)]
     df.reset_index(drop=True, inplace=True)
     print(df.shape,len(list(df.groupby([col_item]))))
@@ -76,5 +76,5 @@ def combination(df,users,col_user='user_id',col_item='item_id'):
         out.extend(pairs)
 
     out = list(zip(*set(out)))
-    print('去重后的边数:', len(out[0]))
+    print('Number of sides after de-duplication:', len(out[0]))
     return out

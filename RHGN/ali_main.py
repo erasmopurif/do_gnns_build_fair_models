@@ -10,8 +10,7 @@ from sklearn import metrics
 
 import time
 
-from fairness import Fairness
-import neptune.new as neptune
+from RHGN.fairness import Fairness
 
 parser = argparse.ArgumentParser(description='for Alibaba Dataset')
 
@@ -27,9 +26,9 @@ parser.add_argument('--gpu',  type=int, default=0, choices=[0,1,2,3,4,5,6,7])
 parser.add_argument('--graph',  type=str, default='G_ori')
 parser.add_argument('--model',  type=str, default='RHGN', choices=['RHGN','RGCN'])
 parser.add_argument('--data_dir',  type=str, default='../data/sample')
-parser.add_argument('--patience', type=int, default=10) # added
-parser.add_argument('--sens_attr', type=str, default='gender') # added
-parser.add_argument('--log_tags', type=str, default='') # added
+parser.add_argument('--patience', type=int, default=10)
+parser.add_argument('--sens_attr', type=str, default='gender')
+parser.add_argument('--log_tags', type=str, default='')
 
 args = parser.parse_args()
 '''Fixed random seeds'''
@@ -38,21 +37,6 @@ torch.manual_seed(args.seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
-
-'''Instantiate Neptune client and log arguments'''
-neptune_run = neptune.init(
-    project="erasmopurif/RHGN-fairness-user-profiling",
-    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI0ZGRhYTczYi03MjA1LTRjOTEtYjFjMC1kMjg4ZDZmNWY0ZGMifQ==",
-)
-neptune_run["sys/tags"].add(args.log_tags.split(","))
-neptune_run["seed"] = args.seed
-neptune_run["dataset"] = "Alibaba-small"
-neptune_run["model"] = args.model
-neptune_run["label"] = args.label
-neptune_run["num_epochs"] = args.n_epoch
-neptune_run["n_hid"] = args.n_hid
-neptune_run["lr"] = args.max_lr
-# neptune_run["clip"] = args.clip
 
 
 def get_n_params(model):
@@ -168,185 +152,20 @@ def Batch_train(model):
     elapsed_time = (toc-tic)/60
     print("\nElapsed time: {:.4f} minutes".format(elapsed_time))
 
-    '''Log result on Neptune'''
-    neptune_run["test/accuracy"] = best_test_acc
-    neptune_run["test/f1_score"] = test_f1
-    neptune_run["test/auc"] = auc
-    neptune_run["test/tpr"] = tpr
-    neptune_run["test/fpr"] = fpr
-    neptune_run["conf_matrix"] = confusion_matrix
-    neptune_run["elaps_time"] = elapsed_time
-
-    return labels, preds # added
-
-    # print("preds:", type(preds), len(preds))
-    # print("labels:", type(labels), len(labels))
-    # print("test_idx:", type(test_idx), len(test_idx))
-    # print("input_nodes['user']:", type(input_nodes['user']), len(input_nodes['user'].cpu().detach().numpy()))
-    # print("test_nodes_idx:", type(test_nodes_idx), len(test_nodes_idx))
-    # print("Batch_logits:", type(Batch_logits.cpu().detach().numpy()), Batch_logits.cpu().detach().numpy())
-    # print("Batch_labels:", type(Batch_labels.cpu().detach().numpy()), Batch_labels.cpu().detach().numpy())
-
-def Batch_train_new(model):
-    """
-    Training, validation and test
-    """
-    print("\nTraining, validation, and test started.\n")
-    train_tic = time.perf_counter() # start counting train time
-
-    best_val_acc = 0
-    best_test_acc = 0
-    best_val_loss = np.inf
-    best_epoch = 0
-    patience_counter = 0
-    best_model_state = {}
-    train_step = 0
-    Minloss_val = 10000.0
-    
-    for epoch in np.arange(args.n_epoch) + 1:
-        epoch_tic = time.perf_counter() # start counting epoch time
-
-        model.train()
-        '''---------------------------TRAIN------------------------'''
-        total_loss = 0
-        total_acc = 0
-        count = 0
-        for input_nodes, output_nodes, blocks in train_dataloader:
-            Batch_logits,Batch_labels = model(input_nodes,output_nodes,blocks, out_key='user',label_key=args.label, is_train=True)
-
-            # The loss is computed only for labeled nodes.
-            loss = F.cross_entropy(Batch_logits, Batch_labels)
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-            optimizer.step()
-            train_step += 1
-            scheduler.step(train_step)
-
-            acc = torch.sum(Batch_logits.argmax(1) == Batch_labels).item()
-            total_loss += loss.item() * len(output_nodes['user'].cpu())
-            total_acc += acc
-            count += len(output_nodes['user'].cpu())
-
-        train_loss, train_acc = total_loss / count, total_acc / count
-
-        model.eval()
-        '''-------------------------VAL-----------------------'''
-        with torch.no_grad():
-            total_loss = 0
-            total_acc = 0
-            count = 0
-            preds=[]
-            labels=[]
-            for input_nodes, output_nodes, blocks in val_dataloader:
-                Batch_logits,Batch_labels = model(input_nodes, output_nodes,blocks, out_key='user',label_key=args.label, is_train=False)
-                loss = F.cross_entropy(Batch_logits, Batch_labels)
-                acc   = torch.sum(Batch_logits.argmax(1)==Batch_labels).item()
-                preds.extend(Batch_logits.argmax(1).tolist())
-                labels.extend(Batch_labels.tolist())
-                total_loss += loss.item() * len(output_nodes['user'].cpu())
-                total_acc +=acc
-                count += len(output_nodes['user'].cpu())
-
-            val_f1 = metrics.f1_score(preds, labels, average='macro')
-            val_loss,val_acc   = total_loss / count, total_acc / count
-
-            print("Epoch: {:04d}".format(epoch), 
-                "||",
-                "time cost: {:.2f}s".format(time.perf_counter() - epoch_tic), 
-                "||",
-                "train loss: {:.4f}".format(train_loss),
-                "val loss: {:.4f}".format(val_loss))
-
-            if val_loss <= best_val_loss:
-                best_val_loss = val_loss
-                best_epoch = epoch
-                # patience_counter = 0
-                best_model_state = model.state_dict()
-            # else:
-                # patience_counter += 1
-
-            # if patience_counter == args.patience:
-                # break
-            
-            if best_val_loss < 0.4:
-                break
-
-        torch.cuda.empty_cache()
-
-    
-    model.load_state_dict(best_model_state)
-    model.eval()
-    '''------------------------TEST----------------------'''
-    with torch.no_grad():
-        total_test_loss = 0
-        total_test_acc = 0
-        count = 0
-        preds = []
-        labels = []
-
-        for input_nodes, output_nodes, blocks in test_dataloader:
-            Batch_logits, Batch_labels = model(input_nodes, output_nodes, blocks, out_key='user', label_key=args.label, is_train=False)
-            loss = F.cross_entropy(Batch_logits, Batch_labels)
-            acc = torch.sum(Batch_logits.argmax(1)==Batch_labels).item()
-            preds.extend(Batch_logits.argmax(1).tolist())
-            labels.extend(Batch_labels.tolist())
-            total_test_loss += loss.item() * len(output_nodes['user'].cpu())
-            total_test_acc += acc
-            count += len(output_nodes['user'].cpu())
-            
-
-        # test_f1 = metrics.f1_score(preds, labels, average='macro')
-        test_loss, test_acc = total_test_loss / count, total_test_acc / count
-        # test_loss, _ = total_test_loss / count, total_test_acc / count
-        test_f1 = metrics.f1_score(labels, preds, average='macro')
-        # test_acc = metrics.accuracy_score(labels, preds)
-        classification_report = metrics.classification_report(labels, preds, digits=4)
-        print(classification_report)
-        # Classification reports
-        confusion_matrix = metrics.confusion_matrix(labels, preds)
-        print(confusion_matrix)
-        fpr, tpr, _ = metrics.roc_curve(labels, preds)
-        auc = metrics.auc(fpr, tpr)
-        print("AUC:", auc)
-        
-        elaps_time = (time.perf_counter() - train_tic) / 60
-        print("\nTotal time elapsed: {:.2f} min".format(elaps_time))
-        print("Best Result:\n",
-            "best epoch: {:04d}".format(best_epoch),
-            "||",
-            "test loss: {:.4f}".format(test_loss),
-            "||",
-            "accuracy: {:.4f}".format(test_acc),
-            "macro-f1: {:.4f}".format(test_f1))
-
-    '''Log result on Neptune'''
-    neptune_run["test/accuracy"] = test_acc
-    neptune_run["test/f1_score"] = test_f1
-    neptune_run["test/auc"] = auc
-    neptune_run["test/tpr"] = tpr
-    neptune_run["test/fpr"] = fpr
-    neptune_run["conf_matrix"] = confusion_matrix
-    neptune_run["elaps_time"] = elaps_time
-    
-    torch.cuda.empty_cache()
-
     return labels, preds # added
 
 
-
+######################################################################
 device = torch.device("cuda:{}".format(args.gpu))
 
 '''Loading charts and labels'''
 G=torch.load('{}/{}.pkl'.format(args.data_dir,args.graph))
 print(G)
 labels=G.nodes['user'].data[args.label]
-# print(labels) # added
 print(labels.max().item()+1)
 
 # generate train/val/test split
 pid = np.arange(len(labels))
-# print(pid) # added
 shuffle = np.random.permutation(pid)
 train_idx = torch.tensor(shuffle[0:int(len(labels)*0.75)]).long()
 val_idx = torch.tensor(shuffle[int(len(labels)*0.75):int(len(labels)*0.875)]).long()
@@ -355,7 +174,6 @@ test_idx = torch.tensor(shuffle[int(len(labels)*0.875):]).long()
 print("train_idx:", train_idx.shape)
 print("val_idx:", val_idx.shape)
 print("test_idx:", test_idx.shape, type(test_idx), test_idx)
-
 
 node_dict = {}
 edge_dict = {}
@@ -418,7 +236,6 @@ if args.model=='RHGN':
     cid2_feature = torch.load('{}/cid2_feature.npy'.format(args.data_dir))
     cid3_feature = torch.load('{}/cid3_feature.npy'.format(args.data_dir))
 
-
     model = ali_RHGN(G,
                 node_dict, edge_dict,
                 n_inp=args.n_inp,
@@ -439,10 +256,8 @@ if args.model=='RHGN':
     targets, predictions = Batch_train(model)
 
     ### Compute fairness ###
-    fair_obj = Fairness(G, test_idx, targets, predictions, args.sens_attr, neptune_run)
+    fair_obj = Fairness(G, test_idx, targets, predictions, args.sens_attr)
     fair_obj.statistical_parity()
     fair_obj.equal_opportunity()
     fair_obj.overall_accuracy_equality()
     fair_obj.treatment_equality()
-
-    neptune_run.stop()

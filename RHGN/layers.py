@@ -140,31 +140,3 @@ class RHGNLayer(nn.Module):
                 else:
                     new_h[ntype] = trans_out
             return new_h
-
-class HeteroGCNLayer(nn.Module):
-    def __init__(self, in_size, out_size, etypes):
-        super(HeteroGCNLayer, self).__init__()
-        # W_r for each relation
-        self.weight = nn.ModuleDict({
-                name : nn.Linear(in_size, out_size) for name in etypes
-            })
-
-    def forward(self, G, feat_dict,is_batch=True):
-        # The input is a dictionary of node features for each type
-        funcs = {}
-        for srctype, etype, dsttype in G.canonical_etypes:
-            # Compute W_r * h
-            Wh = self.weight[etype](feat_dict[srctype])
-            # Save it in graph for message passing
-            G.srcnodes[srctype].data['Wh_%s' % etype] = Wh
-            # Specify per-relation message passing functions: (message_func, reduce_func).
-            # Note that the results are saved to the same destination feature 'h', which
-            # hints the type wise reducer for aggregation.
-            funcs[etype] = (fn.copy_u('Wh_%s' % etype, 'm'), fn.mean('m', 'h'))
-        # Trigger message passing of multiple types.
-        # The first argument is the message passing functions for each relation.
-        # The second one is the type wise reducer, could be "sum", "max",
-        # "min", "mean", "stack"
-        G.multi_update_all(funcs, 'sum')
-        # return the updated node feature dictionary
-        return {ntype : G.dstnodes[ntype].data['h'] for ntype in G.ntypes}

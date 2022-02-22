@@ -103,8 +103,6 @@ class ClusteringMachine(object):
                 self.sg_val_nodes[cluster] = sorted(self.sg_val_nodes[cluster])
                 self.sg_test_nodes[cluster] = sorted(self.sg_test_nodes[cluster])
                 self.sg_field_index[cluster] = self.field_index[self.sg_nodes[cluster],:]
-            
-            # print(len(self.sg_test_nodes[0]))
 
     def transfer_edges_and_nodes(self):
         """

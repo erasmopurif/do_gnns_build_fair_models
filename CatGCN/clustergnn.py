@@ -13,10 +13,9 @@ class ClusterGNNTrainer(object):
     """
     Training a huge graph cluster partition strategy.
     """
-    def __init__(self, args, clustering_machine, neptune_run):
+    def __init__(self, args, clustering_machine):
         self.args = args
         self.clustering_machine = clustering_machine
-        self.neptune_run = neptune_run # added
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.class_weight = clustering_machine.class_weight.to(self.device)
         self.create_model()
@@ -93,13 +92,6 @@ class ClusterGNNTrainer(object):
         target = target[test_nodes]
         prediction = prediction[test_nodes,:]
 
-        # ## Test print
-        # print("\ntest_nodes:", type(test_nodes))
-        # print("node_count:", test_nodes.shape[0])
-        # print("target[0]:", target[0])
-        # print("prediction[0,:]:", prediction[0,:].argmax(1))
-        # ## 
-
         return average_loss, node_count, prediction, target
 
     def update_average_loss(self, batch_average_loss, node_count):
@@ -164,11 +156,6 @@ class ClusterGNNTrainer(object):
             if bad_counter == self.args.patience:
                 break
 
-            # if val_loss < best_loss:
-            #     best_loss = val_loss
-            #     best_epoch = epoch
-            #     best_model_state = self.model.state_dict()
-
         self.model.load_state_dict(best_model_state)
         self.model.eval()
         self.node_count_seen = 0
@@ -194,14 +181,6 @@ class ClusterGNNTrainer(object):
         auc = metrics.auc(fpr, tpr)
         print("AUC:", auc)
 
-        ## Test print
-        # print("node_count type: {}".format(type(node_count)))
-        # print("target type: {}".format(type(self.targets)))
-        # print("prediction type: {}".format(type(self.predictions)))
-        # print("\nnode_count[0]:", type(node_count[0]))
-        # print("target[0]:", self.targets[0])
-        # print("prediction[0]:", self.predictions[0])
-
         elaps_time = (time.perf_counter() - train_start_time)/60
 
         print("Optimization Finished!")
@@ -212,15 +191,4 @@ class ClusterGNNTrainer(object):
             "test loss: {:.4f}".format(test_loss),
             "||",
             "accuracy: {:.4f}".format(acc_score),
-            "macro-f1: {:.4f}".format(macro_f1))
-
-        self.neptune_run["best_epoch"] = best_epoch
-        self.neptune_run["test/loss"] = test_loss
-        self.neptune_run["test/acc"] = acc_score
-        self.neptune_run["test/f1"] = macro_f1
-        self.neptune_run["test/auc"] = auc
-        self.neptune_run["test/tpr"] = tpr
-        self.neptune_run["test/fpr"] = fpr
-        self.neptune_run["conf_matrix"] = confusion_matrix
-        self.neptune_run["elaps_time"] = elaps_time
-        
+            "macro-f1: {:.4f}".format(macro_f1))        

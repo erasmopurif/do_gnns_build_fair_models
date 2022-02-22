@@ -5,12 +5,10 @@ import torch
 import numpy as np
 from model import *
 import argparse
-# from sklearn.metrics import f1_score, confusion_matrix, classification_report
 from sklearn import metrics
 
 import time
-import neptune.new as neptune
-from fairness import Fairness
+from RHGN.fairness import Fairness
 
 parser = argparse.ArgumentParser(description='for JD Dataset')
 
@@ -26,8 +24,8 @@ parser.add_argument('--gpu',  type=int, default=0,choices=[0,1,2,3,4,5,6,7])
 parser.add_argument('--graph',  type=str, default='G_ori')
 parser.add_argument('--model',  type=str, default='RHGN',choices=['RHGN','RGCN'])
 parser.add_argument('--data_dir',  type=str, default='../data/sample')
-parser.add_argument('--sens_attr', type=str, default='gender') # added
-parser.add_argument('--log_tags', type=str, default='') # added
+parser.add_argument('--sens_attr', type=str, default='gender')
+parser.add_argument('--log_tags', type=str, default='')
 
 args = parser.parse_args()
 '''Fixed random seeds'''
@@ -36,23 +34,6 @@ torch.manual_seed(args.seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
-
-
-'''Instantiate Neptune client and log arguments'''
-neptune_run = neptune.init(
-    project="erasmopurif/RHGN-fairness-user-profiling",
-    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI0ZGRhYTczYi03MjA1LTRjOTEtYjFjMC1kMjg4ZDZmNWY0ZGMifQ==",
-)
-neptune_run["sys/tags"].add(args.log_tags.split(","))
-neptune_run["seed"] = args.seed
-neptune_run["dataset"] = "JD-small-sampled"
-neptune_run["model"] = args.model
-neptune_run["label"] = args.label
-neptune_run["num_epochs"] = args.n_epoch
-neptune_run["n_hid"] = args.n_hid
-neptune_run["lr"] = args.max_lr
-neptune_run["clip"] = args.clip
-
 
 def get_n_params(model):
     pp=0
@@ -181,7 +162,6 @@ def Batch_train(model):
         total_acc += acc
         count += len(output_nodes['user'].cpu())
 
-    # test_f1 = metrics.f1_score(preds, labels, average='macro')
     test_f1 = metrics.f1_score(labels, preds, average='macro')
     test_loss, test_acc = total_loss / count, total_acc / count
     print('Epoch: %d , test loss %.4f,, Test Acc %.4f (f1 %.4f)' % (
@@ -204,21 +184,7 @@ def Batch_train(model):
     elapsed_time = (toc-tic)/60
     print("\nElapsed time: {:.4f} minutes".format(elapsed_time))
 
-    '''Log result on Neptune'''
-    neptune_run["test/accuracy"] = best_test_acc
-    neptune_run["test/f1_score"] = test_f1
-    neptune_run["test/auc"] = auc
-    neptune_run["test/tpr"] = tpr
-    neptune_run["test/fpr"] = fpr
-    neptune_run["conf_matrix"] = confusion_matrix
-    neptune_run["elaps_time"] = elapsed_time
-
-    # with open("./test.txt", "w") as f:
-    #     f.write(str(labels))
-    #     f.write("\n")
-    #     f.write(str(preds))
-
-    return labels, preds # added
+    return labels, preds
 
 ####################################################################################
 
@@ -240,7 +206,6 @@ test_idx = torch.tensor(shuffle[int(len(labels)*0.875):]).long()
 print(train_idx.shape)
 print(val_idx.shape)
 print(test_idx.shape)
-
 
 node_dict = {}
 edge_dict = {}
@@ -267,7 +232,6 @@ for ntype in G.ntypes:
     emb = nn.Parameter(torch.Tensor(G.number_of_nodes(ntype), 200), requires_grad = False)
     nn.init.xavier_uniform_(emb)
     G.nodes[ntype].data['inp'] = emb
-
 
 G = G.to(device)
 train_idx_item=torch.tensor(shuffle[0:int(G.number_of_nodes('item') * 0.75)]).long()
@@ -304,7 +268,6 @@ if args.model=='RHGN':
     cid4_feature = torch.load('{}/brand_feature.npy'.format(args.data_dir))
     # cid4_feature = torch.load('{}/cid4_feature.npy'.format(args.data_dir))
 
-
     model = jd_RHGN(G,
                 node_dict, edge_dict,
                 n_inp=args.n_inp,
@@ -325,27 +288,9 @@ if args.model=='RHGN':
     
     targets, predictions = Batch_train(model)
 
-    # print(G.nodes["user"].data["gender"])
-
-    fair_obj = Fairness(G, test_idx, targets, predictions, args.sens_attr, neptune_run)
+    ### Compute fairness ###
+    fair_obj = Fairness(G, test_idx, targets, predictions, args.sens_attr)
     fair_obj.statistical_parity()
     fair_obj.equal_opportunity()
     fair_obj.overall_accuracy_equality()
     fair_obj.treatment_equality()
-
-    neptune_run.stop()
-
-
-if args.model=='RGCN':
-    model = HeteroGCN(G,
-                       in_size=args.n_inp,
-                       hidden_size=args.n_hid,
-                       out_size=labels.max().item()+1).to(device)
-    optimizer = torch.optim.AdamW(model.parameters())
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, epochs=args.n_epoch,
-                                                    steps_per_epoch=int(train_idx.shape[0]/args.batch_size)+1,max_lr = args.max_lr)
-    print('Training RGCN with #param: %d' % (get_n_params(model)))
-    Batch_train(model)
-
-
-
