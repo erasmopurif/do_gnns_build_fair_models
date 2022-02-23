@@ -49,13 +49,45 @@ The raw datasets are available at:
 * **JD**: [link](https://github.com/guyulongcs/IJCAI2019_HGAT)
 
 ## Run the code
+Test runs for each combination of model-dataset.
 
 ### CatGCN - Alibaba dataset
 ```
-python3 main.py --seed 11 --gpu 1 --learning-rate 0.1 --weight-decay 1e-5 \
+$ cd CatGCN
+$ python3 main.py --seed 11 --gpu 1 --learning-rate 0.1 --weight-decay 1e-5 \
 --dropout 0.5 --diag-probe 1 --graph-refining agc --aggr-pooling mean --grn-units 16,16 \
 --bi-interaction nfm --nfm-units none --graph-layer pna --gnn-hops 8 --gnn-units 64,64 \
---aggr-style sum --balance-ratio 0.7 --edge-path './input/ali_data/user_edge.csv' \
---field-path './input/ali_data/user_field.npy' --target-path './input/ali_data/user_bin_buy.csv' \
---labels-path './input/ali_data/user_labels.csv' --sens-attr gender
+--aggr-style sum --balance-ratio 0.7 --edge-path ./input/ali_data/user_edge.csv \
+--field-path ./input_ali_data/user_field.npy --target-path ./input_ali_data/user_bin_buy.csv \
+--labels-path ./input_ali_data/user_labels.csv --sens-attr gender --label bin_buy 
 ```
+
+### CatGCN - JD dataset
+```
+$ cd CatGCN
+$ python3 main.py --seed 3 --gpu 0 --learning-rate 1e-2 --weight-decay 1e-5 \
+--dropout 0.5 --diag-probe 1 --graph-refining agc --aggr-pooling mean --grn-units 64,64 \
+--bi-interaction nfm --nfm-units 64,64,64,64 --graph-layer pna --gnn-hops 1 --gnn-units 16,16 \
+--aggr-style sum --balance-ratio 0.1 --edge-path ./input_jd_data/user_edge.csv \
+--field-path ./input_jd_data/user_field.npy --target-path ./input_jd_data/user_bin_age.csv \
+--labels-path ./input_jd_data/user_labels.csv --sens-attr --label bin_age
+```
+
+### RHGN - Alibaba dataset
+```
+$ cd RHGN
+$ python3 ali_main.py --seed 11 --gpu 0 --model RHGN --data_dir ./input_ali_data/ \
+--graph G_new --max_lr 1e-2 --n_hid 32 --clip 2 --n_epoch 100 \
+--sens_attr gender --label bin_buy
+```
+
+### RHGN - JD dataset
+```
+$ cd RHGN
+$ python3 jd_main.py --seed 4 --gpu 0 --model RHGN --data_dir ./input_jd_data/ \
+--graph G_new --max_lr 1e-2 --n_hid 64 --clip 2 --n_epoch 100 \
+--sens_attr gender --label bin_age
+```
+
+## Contact
+[Erasmo Purificato](mailto:erasmo.purificato@ovgu.de)
