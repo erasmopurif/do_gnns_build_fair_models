@@ -6,6 +6,11 @@ def parameter_parser():
     """
     parser = argparse.ArgumentParser(description = "Run CatGCN.")
 
+    parser.add_argument("--gpu",
+                        type = int,
+                        default = 0,
+                        help = "GPU device")
+
     parser.add_argument("--edge-path",
                         nargs = "?",
                         default = "./input/user_edge.csv",
