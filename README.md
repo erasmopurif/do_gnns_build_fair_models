@@ -54,7 +54,7 @@ Test runs for each combination of model-dataset.
 ### CatGCN - Alibaba dataset
 ```
 $ cd CatGCN
-$ python3 main.py --seed 11 --gpu 1 --learning-rate 0.1 --weight-decay 1e-5 \
+$ python3 main.py --seed 11 --gpu 0 --learning-rate 0.1 --weight-decay 1e-5 \
 --dropout 0.5 --diag-probe 1 --graph-refining agc --aggr-pooling mean --grn-units 16,16 \
 --bi-interaction nfm --nfm-units none --graph-layer pna --gnn-hops 8 --gnn-units 64,64 \
 --aggr-style sum --balance-ratio 0.7 --edge-path ./input/ali_data/user_edge.csv \
