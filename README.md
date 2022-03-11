@@ -90,6 +90,5 @@ $ python3 jd_main.py --seed 4 --gpu 0 --model RHGN --data_dir ./input_jd_data/ \
 ```
 
 ## Contact
-Erasmo Purificato (erasmo.purificato@ovgu.de)
-<!-- [Erasmo Purificato](mailto:erasmo.purificato@ovgu.de) -->
-<!-- erasmo.purificato@ovgu.de -->
+<!-- Erasmo Purificato (erasmo.purificato@ovgu.de) -->
+erasmo.purificato@ovgu.de
