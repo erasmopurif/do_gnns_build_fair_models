@@ -8,7 +8,7 @@ import argparse
 from sklearn import metrics
 
 import time
-from RHGN.fairness import Fairness
+from fairness import Fairness
 
 parser = argparse.ArgumentParser(description='for JD Dataset')
 

@@ -7,7 +7,7 @@ from clustergnn import ClusterGNNTrainer
 
 from utils import tab_printer, graph_reader, field_reader, target_reader, label_reader
 
-from CatGCN.fairness import Fairness
+from fairness import Fairness
 
 def main():
     """
