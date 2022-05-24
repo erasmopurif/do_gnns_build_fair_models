@@ -78,7 +78,7 @@ $ python3 main.py --seed 11 --gpu 0 --learning-rate 1e-2 --weight-decay 1e-5 \
 $ cd RHGN
 $ python3 ali_main.py --seed 42 --gpu 0 --model RHGN --data_dir ./input_ali_data/ \
 --graph G_new --max_lr 0.1 --n_hid 32 --clip 2 --n_epoch 100 \
---label gender  --sens_attr bin_age
+--label gender --sens_attr bin_age
 ```
 
 ### RHGN - JD dataset
