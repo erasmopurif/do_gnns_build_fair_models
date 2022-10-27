@@ -1,5 +1,5 @@
 # Do Graph Neural Networks Build Fair User Models?
-Repository of the paper "Do Graph Neural Networks Build Fair User Models? Assessing Disparate Impact and Mistreatment in Behavioural User Profiling" by Erasmo Purificato, Ludovico Boratto and Ernesto William De Luca.
+Repository of the paper [Do Graph Neural Networks Build Fair User Models? Assessing Disparate Impact and Mistreatment in Behavioural User Profiling](https://dl.acm.org/doi/abs/10.1145/3511808.3557584) by Erasmo Purificato, Ludovico Boratto and Ernesto William De Luca.
 
 ## Abstract
 Recent approaches to behavioural user profiling employ Graph Neural Networks (GNNs) to turn users' interactions with a platform into actionable knowledge. The effectiveness of an approach is usually assessed with accuracy-based perspectives, where the capability to predict user features (such as the purchasing level or the age) is evaluated. In this work, we perform a *beyond-accuracy* analysis of the state-of-the-art approaches to assess the presence of disparate impact and disparate mistreatment, meaning that users characterised by a given sensitive feature are unintentionally, but systematically, classified worse than their counterparts. Our analysis on two-real world datasets shows that different user profiling paradigms can impact on fairness results.
@@ -90,5 +90,4 @@ $ python3 jd_main.py --seed 3 --gpu 0 --model RHGN --data_dir ./input_jd_data/ \
 ```
 
 ## Contact
-<!-- Erasmo Purificato (erasmo.purificato@ovgu.de) -->
-erasmo.purificato@ovgu.de
+**Erasmo Purificato** (erasmo.purificato@ovgu.de)
